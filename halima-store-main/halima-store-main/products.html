@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Store - Products</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .card-img-top {
+      object-fit: cover;
+      height: 180px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="bg-primary text-white text-center p-4 position-relative">
+    <h1>Our Products</h1>
+    <nav class="mt-3">
+      <a href="index.html" class="text-white me-3 text-decoration-none">Home</a>
+      <a href="products.html" class="text-white me-3 text-decoration-none">Products</a>
+      <a href="about.html" class="text-white text-decoration-none">About</a>
+    </nav>
+
+    <!-- Theme Toggle Button -->
+    <button id="toggleThemeBtn" class="btn btn-light position-absolute top-0 end-0 m-3" aria-label="Toggle theme">
+      <i id="themeIcon" class="bi bi-moon"></i>
+    </button>
+  </header>
+  
+
+  <main class="container my-5">
+    <!-- Filters -->
+    <section class="mb-4 row g-3 align-items-center">
+      <div class="col-md-4">
+        <input
+          type="text"
+          id="searchInput"
+          class="form-control"
+          placeholder="Search products..."
+          aria-label="Search products"
+        />
+      </div>
+      <div class="col-md-3">
+        <select id="categorySelect" class="form-select" aria-label="Filter by category">
+          <option value="all" selected>All Categories</option>
+          <option value="tech">Tech</option>
+          <option value="fashion">Fashion</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Products Grid -->
+    <section id="productsGrid" class="row g-4">
+      <div class="spinner-border text-primary m-auto" role="status" id="loadingSpinner" aria-hidden="true"></div>
+    </section>
+
+    <!-- Pagination -->
+    <nav aria-label="Page navigation" class="mt-4">
+      <ul id="pagination" class="pagination justify-content-center"></ul>
+    </nav>
+  </main>
+
+  <footer class="bg-light text-center py-3 border-top">
+    <p class="mb-0">
+      <i class="bi bi-whatsapp"></i>
+      <a href="https://wa.me/+330759237844" class="text-decoration-none">Contact us on WhatsApp</a>
+    </p>
+  </footer>
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Theme Toggle Script -->
+  <script>
+    const toggleBtn = document.getElementById('toggleThemeBtn');
+    const themeIcon = document.getElementById('themeIcon');
+    const htmlTag = document.documentElement;
+
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    htmlTag.setAttribute('data-bs-theme', savedTheme);
+    themeIcon.className = savedTheme === 'dark' ? 'bi bi-sun' : 'bi bi-moon';
+
+    toggleBtn.addEventListener('click', () => {
+      const currentTheme = htmlTag.getAttribute('data-bs-theme');
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      htmlTag.setAttribute('data-bs-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      themeIcon.className = newTheme === 'dark' ? 'bi bi-sun' : 'bi bi-moon';
+    });
+  </script>
+
+
+  <script>
+  const productsGrid = document.getElementById('productsGrid');
+  const loadingSpinner = document.getElementById('loadingSpinner');
+  const searchInput = document.getElementById('searchInput');
+  const categorySelect = document.getElementById('categorySelect');
+  const pagination = document.getElementById('pagination');
+
+  const PRODUCTS_PER_PAGE = 10;
+  let currentPage = 1;
+  let products = [];
+  let filteredProducts = [];
+
+  async function loadProducts() {
+    loadingSpinner.style.display = 'block';
+    try {
+      const response = await fetch('products.json');
+      if (!response.ok) throw new Error('Failed to fetch products');
+      products = await response.json();
+      filteredProducts = [...products];
+      filterProducts(); // Inicializa com os produtos carregados
+    } catch (error) {
+      console.error('Error loading products:', error);
+      productsGrid.innerHTML = '<p class="text-center text-danger">Failed to load products.</p>';
+    } finally {
+      loadingSpinner.style.display = 'none';
+    }
+  }
+
+  function createProductCard(product) {
+    const col = document.createElement('div');
+    col.className = 'col-sm-6 col-md-4 col-lg-3';
+
+    const card = document.createElement('div');
+    card.className = 'card h-100 shadow-sm';
+
+    const img = document.createElement('img');
+    img.src = product.images[0];
+    img.alt = product.name;
+    img.className = 'card-img-top';
+    card.appendChild(img);
+
+    const cardBody = document.createElement('div');
+    cardBody.className = 'card-body d-flex flex-column';
+
+    const title = document.createElement('h5');
+    title.className = 'card-title';
+    title.textContent = product.name;
+    cardBody.appendChild(title);
+
+    const desc = document.createElement('p');
+    desc.className = 'card-text';
+    desc.textContent = product.brief;
+    cardBody.appendChild(desc);
+
+    const price = document.createElement('p');
+    price.className = 'mt-auto fw-bold';
+    price.textContent = `€${product.price.toFixed(2)}`;
+    cardBody.appendChild(price);
+
+    const detailsLink = document.createElement('a');
+    detailsLink.href = `product.html?id=${product.id}`;
+    detailsLink.className = 'btn btn-primary w-100 mt-2';
+    detailsLink.textContent = 'View Details';
+    cardBody.appendChild(detailsLink);
+
+    card.appendChild(cardBody);
+    col.appendChild(card);
+
+    return col;
+  }
+
+  function renderProducts() {
+    productsGrid.innerHTML = '';
+    const start = (currentPage - 1) * PRODUCTS_PER_PAGE;
+    const end = start + PRODUCTS_PER_PAGE;
+    const pageProducts = filteredProducts.slice(start, end);
+
+    if (pageProducts.length === 0) {
+      productsGrid.innerHTML = '<p class="text-center">No products found.</p>';
+      pagination.innerHTML = '';
+      return;
+    }
+
+    pageProducts.forEach(product => {
+      const card = createProductCard(product);
+      productsGrid.appendChild(card);
+    });
+
+    renderPagination();
+  }
+
+  function renderPagination() {
+    pagination.innerHTML = '';
+    const pageCount = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE);
+    if (pageCount <= 1) return;
+
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a>`;
+    prevLi.addEventListener('click', e => {
+      e.preventDefault();
+      if (currentPage > 1) {
+        currentPage--;
+        renderProducts();
+      }
+    });
+    pagination.appendChild(prevLi);
+
+    for (let i = 1; i <= pageCount; i++) {
+      const li = document.createElement('li');
+      li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+      li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+      li.addEventListener('click', e => {
+        e.preventDefault();
+        currentPage = i;
+        renderProducts();
+      });
+      pagination.appendChild(li);
+    }
+
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPage === pageCount ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" aria-label="Next"><span aria-hidden="true">&raquo;</span></a>`;
+    nextLi.addEventListener('click', e => {
+      e.preventDefault();
+      if (currentPage < pageCount) {
+        currentPage++;
+        renderProducts();
+      }
+    });
+    pagination.appendChild(nextLi);
+  }
+
+  function filterProducts() {
+    const searchTerm = searchInput.value.trim().toLowerCase();
+    const category = categorySelect.value;
+
+    filteredProducts = products.filter(product => {
+      const matchesSearch =
+        product.name.toLowerCase().includes(searchTerm) ||
+        product.brief.toLowerCase().includes(searchTerm);
+
+      const matchesCategory = category === 'all' || product.category === category;
+
+      return matchesSearch && matchesCategory;
+    });
+
+    currentPage = 1;
+    renderProducts();
+  }
+
+  searchInput.addEventListener('input', filterProducts);
+  categorySelect.addEventListener('change', filterProducts);
+
+  window.addEventListener('load', loadProducts);
+</script>
+
+</body>
+</html>
